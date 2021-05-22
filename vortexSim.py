@@ -1,12 +1,22 @@
 class VortexSim():
     'An analytic vortex simulation for n vortices of set strengths'
 
-    # Global imports
+    # Class-wide imports
     import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.animation import FuncAnimation
 
     def __init__(self, vortex_points, x1, y1, x2, y2, strengths = None, *, step = 20):
+        """
+        Parameters:
+
+            vortex_points (list): A list of tuples of length 2 containing the coordinates of the vortices
+
+            x1, y1, x2, y2 (float): Floating point numbers representing the bounds of the plane that will be plotted
+
+            strengths (list): A list of floats which represent the strength of the vortex. A negative strength is equivalent to a negatively signed vortex
+
+            step (int): An integer representing the ratio of points in the heatmap to vectors plotted in the quiver plot
+        """
+
         # Initial setup
 
         ## Setting the coordinates of each vortex
@@ -49,11 +59,22 @@ class VortexSim():
         self.dydtq = [i[::step] for i in dydt[::step]]
 
     def save_sim(self, length = 100, interval = 50):
-        'Saves a gif of the vortex simulation to filepath'
+        """
+        Saves a gif of the vortex simulation to filepath
+
+        Parameters:
+
+            length (int): The total number of frames present in the gif
+
+            interval (int): The number of milliseconds between frames in the gif
+        """
+
+        import matplotlib.pyplot as plt
+        from matplotlib.animation import FuncAnimation
         from astropy.visualization import (MinMaxInterval, LogStretch, ImageNormalize)
 
         # Setting up the plot
-        self.fig, self.ax = self.plt.subplots(1, 1)
+        self.fig, self.ax = plt.subplots(1, 1)
 
         # Normalising the heatmap colours using a log stretch
         norm = ImageNormalize(self.v, interval=MinMaxInterval(), stretch=LogStretch())
@@ -64,10 +85,8 @@ class VortexSim():
         # Plotting the initial quiver plot
         self.Q = self.ax.quiver(self.xq, self.yq, self.dxdtq, self.dydtq, pivot='mid')
 
-        package = [self.im, self.Q]
-
         # Animating the movement of the quiver plot
-        animator = self.FuncAnimation(self.fig, self.update_plots, fargs = (self.x, self.y, self.strengths, self.step), frames = length, interval = interval, blit=False)
+        animator = FuncAnimation(self.fig, self.update_plots, fargs = (self.x, self.y, self.strengths, self.step), frames = length, interval = interval, blit=False)
         self.fig.tight_layout()
 
         # Saving gif of animation
