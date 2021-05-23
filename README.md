@@ -12,3 +12,7 @@ Some simple examples can be found below:
 So far the simulation plots a quiver plot of the direction of flow over a heatmap of the magnitude of the velocities at each point. There is a fair amount of customisability within the arguments, but do be aware there is little protection against singularities, so if you have division by zero error try different bounds so the velocity is never evaluated at the singularity. 
 
 This is quite a simple tool so far, but it is very easy to use, and I plan to add some more functionality to it over the coming weeks.
+
+Currently working on vortex street simulations. Some functionality already included, here is a quick demo:
+
+![vortexplot](https://user-images.githubusercontent.com/79726292/119266355-623b7980-bbe2-11eb-8748-0172ebda7498.gif)
