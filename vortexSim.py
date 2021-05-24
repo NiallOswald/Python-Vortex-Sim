@@ -139,7 +139,7 @@ class VortexSim():
 
         # Imports
         import matplotlib.pyplot as plt
-        from matplotlib.animation import FuncAnimation
+        from matplotlib.animation import (FuncAnimation, PillowWriter)
         from astropy.visualization import (MinMaxInterval, LogStretch, ImageNormalize)
 
         # Fixing points for the heatmap
@@ -186,7 +186,8 @@ class VortexSim():
         self.fig.tight_layout()
 
         # Saving gif of animation
-        animator.save('vortexplot.gif', writer='imagemagick')
+        writergif = PillowWriter(fps = 30) 
+        animator.save(r'vortexplot.gif', writer = writergif)
 
 class VortexStreet(VortexSim):
     'A pseudo-simulation for a vortex street'
