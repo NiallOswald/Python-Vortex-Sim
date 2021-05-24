@@ -124,7 +124,7 @@ class VortexSim():
         # Return updated plots
         return [self.im, self.Q]
 
-    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05):
+    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6)):
         """
         Saves a gif of the vortex simulation to filepath
 
@@ -135,6 +135,8 @@ class VortexSim():
             interval (int): The number of milliseconds between frames in the gif
 
             delta (float): A float representing the size of steps between each frame
+
+            gifdim (tuple): A tuple containing the dimension of the output gif (Note this is not the dimension of the plot)
         """
 
         # Imports
@@ -167,7 +169,7 @@ class VortexSim():
         dydtq = [i[::self.step] for i in dydt[::self.step]]
 
         # Setting up the plot
-        self.fig, self.ax = plt.subplots(1, 1)
+        self.fig, self.ax = plt.subplots(figsize = gifdim)
 
         # Setting plotting dimensions for the heatmap
         extent = [self.x1, self.x2, self.y1, self.y2]
