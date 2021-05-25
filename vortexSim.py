@@ -90,7 +90,7 @@ class VortexSim():
         # Return updated vortex position
         return (xm + delta*dxdt, ym + delta*dydt)
 
-    def update_plots(self, num, x, y, delta):
+    def update_plots(self, num, x, y, delta, threshold):
         'Updates the plots for each frame'
 
         # Update strengths with damping factor
@@ -116,6 +116,13 @@ class VortexSim():
         # Create a lower resolution list of velocities for use in the quiver plot
         dxdtq = [i[::self.step] for i in dxdt[::self.step]]
         dydtq = [i[::self.step] for i in dydt[::self.step]]
+
+        # Remove velocities above a cut-off threshold
+        if threshold != None:
+            for i in range(len(dxdtq)):
+                for j in range(len(dxdtq[i])):
+                    if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
+                        dxdtq[i][j], dydtq[i][j] = 0, 0
         
         # Update plot data
         self.Q.set_UVC(dxdtq, dydtq)
@@ -124,7 +131,7 @@ class VortexSim():
         # Return updated plots
         return [self.im, self.Q]
 
-    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6)):
+    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6), threshold = None):
         """
         Saves a gif of the vortex simulation to filepath
 
@@ -137,6 +144,9 @@ class VortexSim():
             delta (float): A float representing the size of steps between each frame
 
             gifdim (tuple): A tuple containing the dimension of the output gif (Note this is not the dimension of the plot)
+
+            threshold (float): A float which is used as a cutoff for the square of the the modulus of the velocity vector. Any velocities with such a modulus
+                                are excluded from the quiver plot, so it is easier to see the position of the point vortex
         """
 
         # Imports
@@ -168,6 +178,13 @@ class VortexSim():
         dxdtq = [i[::self.step] for i in dxdt[::self.step]]
         dydtq = [i[::self.step] for i in dydt[::self.step]]
 
+        # Remove velocities above a cut-off threshold
+        if threshold != None:
+            for i in range(len(dxdtq)):
+                for j in range(len(dxdtq[i])):
+                    if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
+                        dxdtq[i][j], dydtq[i][j] = 0, 0
+
         # Setting up the plot
         self.fig, self.ax = plt.subplots(figsize = gifdim)
 
@@ -184,7 +201,7 @@ class VortexSim():
         self.Q = self.ax.quiver(xq, yq, dxdtq, dydtq, pivot = 'mid')
 
         # Animating the movement of the quiver plot
-        animator = FuncAnimation(self.fig, self.update_plots, fargs = (x, y, delta), frames = frames, interval = interval, blit = False)
+        animator = FuncAnimation(self.fig, self.update_plots, fargs = (x, y, delta, threshold), frames = frames, interval = interval, blit = False)
         self.fig.tight_layout()
 
         # Saving gif of animation
@@ -251,7 +268,7 @@ class VortexStreet(VortexSim):
         # Updates strengths
         self.strengths.append(strength)
 
-    def update_plots(self, num, x, y, delta):
+    def update_plots(self, num, x, y, delta, threshold):
         'Updates the plots for each frame'
 
         # Determine whether a new vortex is to be placed
@@ -283,6 +300,13 @@ class VortexStreet(VortexSim):
         # Create a lower resolution list of velocities for use in the quiver plot
         dxdtq = [i[::self.step] for i in dxdt[::self.step]]
         dydtq = [i[::self.step] for i in dydt[::self.step]]
+
+        # Remove velocities above a cut-off threshold
+        if threshold != None:
+            for i in range(len(dxdtq)):
+                for j in range(len(dxdtq[i])):
+                    if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
+                        dxdtq[i][j], dydtq[i][j] = 0, 0
         
         # Update plot data
         self.Q.set_UVC(dxdtq, dydtq)
