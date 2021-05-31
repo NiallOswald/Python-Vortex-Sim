@@ -90,7 +90,23 @@ class VortexSim():
         # Return updated vortex position
         return (xm + delta*dxdt, ym + delta*dydt)
 
-    def update_plots(self, num, x, y, delta, threshold):
+    def calculate_pressure(self, v, *, rho = 1.0):
+        'Calculates the pressure at each point'
+
+        return 0.5*rho*(v**2)
+
+    def spread_pressure(self, p):
+        'Geneates a new field of the average pressure around each point'
+
+        from scipy import ndimage
+
+        self.watchdog += 1
+        if self.watchdog % 10 == 0:
+            print("Frame no:", self.watchdog)
+
+        return ndimage.generic_filter(p, self.np.nanmean, size = 5, mode = 'constant', cval = self.np.NaN)
+
+    def update_plots(self, num, x, y, delta, threshold, heatmap):
         'Updates the plots for each frame'
 
         # Update strengths with damping factor
@@ -124,14 +140,23 @@ class VortexSim():
                     if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
                         dxdtq[i][j], dydtq[i][j] = 0, 0
         
+        # Find which heatmap to plot
+        if heatmap == 'velocity':
+            heatmapData = v
+        elif heatmap == 'pressure':
+            heatmapData = self.calculate_pressure(v)
+        elif heatmap == 'average':
+            p = self.calculate_pressure(v)
+            heatmapData = self.spread_pressure(p)
+
         # Update plot data
         self.Q.set_UVC(dxdtq, dydtq)
-        self.im.set_array(v)
+        self.im.set_array(heatmapData)
         
         # Return updated plots
         return [self.im, self.Q]
 
-    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6), threshold = None):
+    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6), threshold = None, heatmap = 'velocity'):
         """
         Saves a gif of the vortex simulation to filepath
 
@@ -147,8 +172,10 @@ class VortexSim():
 
             threshold (float): A float which is used as a cutoff for the square of the the modulus of the velocity vector. Any velocities with such a modulus
                                 are excluded from the quiver plot, so it is easier to see the position of the point vortex
-        """
 
+            heatmap (str): A string which sets what is plotted on the heatmap, either velocity, pressure, or an average local pressure
+        """
+        
         # Imports
         import matplotlib.pyplot as plt
         from matplotlib.animation import (FuncAnimation, PillowWriter)
@@ -164,15 +191,26 @@ class VortexSim():
         xq = [i[::self.step] for i in x[::self.step]]
         yq = [i[::self.step] for i in y[::self.step]]
 
-        # Generating initial velocity data for heatmap
+        # Generating initial velocity data
         velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.strengths[i[0]]) for i in enumerate(self.vortex_points)]
 
         dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
         for i in velocities:
             dxdt += i[0]
             dydt += i[1]
-            
+
         v = self.np.sqrt(dxdt**2 + dydt**2)
+        
+        # Find which heatmap to plot
+        if heatmap == 'velocity':
+            heatmapData = v
+        elif heatmap == 'pressure':
+            heatmapData = self.calculate_pressure(v)
+        elif heatmap == 'average':
+            print("WARNING: Very long execution time, keep frames low")
+            p = self.calculate_pressure(v)
+            self.watchdog = 0
+            heatmapData = self.spread_pressure(p)
 
         # Generating initial velocity data for quiver plot
         dxdtq = [i[::self.step] for i in dxdt[::self.step]]
@@ -195,13 +233,13 @@ class VortexSim():
         norm = ImageNormalize(v, interval = MinMaxInterval(), stretch = LogStretch())
 
         # Plotting the initial heatmap
-        self.im = self.ax.imshow(v, origin = 'lower', norm = norm, extent = extent)
+        self.im = self.ax.imshow(heatmapData, origin = 'lower', norm = norm, extent = extent)
 
         # Plotting the initial quiver plot
         self.Q = self.ax.quiver(xq, yq, dxdtq, dydtq, pivot = 'mid')
 
         # Animating the movement of the quiver plot
-        animator = FuncAnimation(self.fig, self.update_plots, fargs = (x, y, delta, threshold), frames = frames, interval = interval, blit = False)
+        animator = FuncAnimation(self.fig, self.update_plots, fargs = (x, y, delta, threshold, heatmap), frames = frames, interval = interval, blit = False)
         self.fig.tight_layout()
 
         # Saving gif of animation
@@ -268,7 +306,7 @@ class VortexStreet(VortexSim):
         # Updates strengths
         self.strengths.append(strength)
 
-    def update_plots(self, num, x, y, delta, threshold):
+    def update_plots(self, num, x, y, delta, threshold, heatmap):
         'Updates the plots for each frame'
 
         # Determine whether a new vortex is to be placed
@@ -307,10 +345,19 @@ class VortexStreet(VortexSim):
                 for j in range(len(dxdtq[i])):
                     if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
                         dxdtq[i][j], dydtq[i][j] = 0, 0
+
+        # Find which heatmap to plot
+        if heatmap == 'velocity':
+            heatmapData = v
+        elif heatmap == 'pressure':
+            heatmapData = self.calculate_pressure(v)
+        elif heatmap == 'average':
+            p = self.calculate_pressure(v)
+            heatmapData = self.spread_pressure(p)
         
         # Update plot data
         self.Q.set_UVC(dxdtq, dydtq)
-        self.im.set_array(v)
+        self.im.set_array(heatmapData)
         
         # Return updated plots
         return [self.im, self.Q]
