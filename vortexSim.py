@@ -23,14 +23,14 @@ class VortexSim():
 
         # Initial setup
 
-        ## Setting the coordinates of each vortex
-        self.vortex_points = vortex_points
+        ## Setting the initial positions of each vortex
+        self.initial_state = vortex_points
 
-        ## Setting the circulation of each vortex
+        ## Setting the initial circulation of each vortex
         if circulations == None:
-            self.circulations = [1 for i in vortex_points]
+            self.initial_circulations = [2*self.np.pi for i in vortex_points]
         else:
-            self.circulations = circulations
+            self.initial_circulations = circulations
 
         ## Setting the damping factor of each vortex
         self.damping = damping
@@ -56,8 +56,8 @@ class VortexSim():
         yt = y - y0
         
         # Generate new velocities
-        dxdt = -circulation*yt/(xt**2 + yt**2)
-        dydt = circulation*xt/(xt**2 + yt**2)
+        dxdt = -(circulation/(2*self.np.pi))*yt/(xt**2 + yt**2)
+        dydt = (circulation/(2*self.np.pi))*xt/(xt**2 + yt**2)
         
         # Return new velocities
         return (dxdt, dydt)
@@ -124,12 +124,8 @@ class VortexSim():
                     if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
                         dxdtq[i][j], dydtq[i][j] = 0, 0
 
-        # Update plot data
-        self.Q.set_UVC(dxdtq, dydtq)
-        self.im.set_array(v)
-        
-        # Return updated plots
-        return [self.im, self.Q]
+        # Return updated data
+        return dxdtq, dydtq, v
 
     def update_plots(self, num, x, y, delta, threshold):
         'Updates the plots for each frame'
@@ -176,6 +172,12 @@ class VortexSim():
         # Fixing locations of each vector
         xq = [i[::self.step] for i in x[::self.step]]
         yq = [i[::self.step] for i in y[::self.step]]
+
+        # Setting the coordinates of each vortex
+        self.vortex_points = self.initial_state.copy()
+
+        # Setting the circulation of each vortex
+        self.circulations = self.initial_circulations.copy()
 
         # Generating initial velocity data
         velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.circulations[i[0]]) for i in enumerate(self.vortex_points)]
@@ -224,7 +226,7 @@ class VortexSim():
 class VortexStreet(VortexSim):
     'A pseudo-simulation for a vortex street'
 
-    def __init__(self, generation_points, period, underlying_velocity, *, dimensions = ((-2, -2), (2, 2)), damping = 0.0, step = 20):
+    def __init__(self, generation_points, period, underlying_velocity, *, dimensions = ((-2, -2), (2, 2)), damping = 0.0, step = 20, circulation = None):
         """
         Parameters:
 
@@ -239,6 +241,8 @@ class VortexStreet(VortexSim):
             damping (float): A non-negative float between 0 and 1, which is used to reduce the circulations of the vortices at each frame
 
             step (int): An integer representing the ratio of points in the heatmap to vectors plotted in the quiver plot
+
+            circulation (float): A float representing the absolute value of the circulation of all generated vortices
         """
 
         # Initial setup
@@ -262,12 +266,17 @@ class VortexStreet(VortexSim):
         self.step = step
 
         ## Setting the coordinates of the initial vortex
-        self.vortex_points = [generation_points[0]]
+        self.initial_state = [generation_points[0]]
 
         ## Setting the circulation of the initial vortex
-        self.circulations = [-1]
+        if circulation == None:
+            self.circulation = 2*self.np.pi
+        else:
+            self.circulation = circulation
 
-    def new_vortex(self, i, circulation = 1):
+        self.initial_circulations = [-self.circulation]
+
+    def new_vortex(self, i, circulation):
         'Adds a new vortex at one of the generation point periodically'
 
         self.place_vortex(self.generation_points[i % 2], circulation)
@@ -286,7 +295,7 @@ class VortexStreet(VortexSim):
 
         # Determine whether a new vortex is to be placed
         if (num % self.period == 0) and (num != 0):
-            self.new_vortex(num//self.period, (-1)**(num//self.period + 1))
+            self.new_vortex(num//self.period, self.circulation*(-1)**(num//self.period + 1))
 
         # Update circulations with damping factor
         self.circulations = [i*(1 - self.damping) for i in self.circulations]
@@ -339,7 +348,7 @@ class VortexStreet(VortexSim):
         # Return delta p
         return 0.5*rho*(v_2**2 - v_1**2)
 
-    def plot_pressure(self, pos, length, *, delta = 0.05, rho = 1.0, imdim = (6, 6)):
+    def plot_pressure(self, pos, length, *, delta = 0.05, rho = 1.225, imdim = (6, 6)):
         """Plots a line graph of pressure at the two given points
         
         Parameters:
@@ -350,9 +359,9 @@ class VortexStreet(VortexSim):
 
             delta (float): A float representing the size of steps between each frame
 
-            rho (float): 
+            rho (float): A float containing the fluid density at all points (assumed constant)
 
-            imdim (): 
+            imdim (tuple): A tuple containing the dimension of the output plot
         """
 
         # Imports
@@ -364,6 +373,12 @@ class VortexStreet(VortexSim):
 
         x, y = self.np.meshgrid(x_values, y_values)
 
+        # Setting the coordinates of each vortex
+        self.vortex_points = self.initial_state.copy()
+
+        # Setting the circulation of each vortex
+        self.circulations = self.initial_circulations.copy()
+
         # Generating pressure data
         pressures = [self.calculate_pressure(i, x, y, delta, rho) for i in range(length)]
 
@@ -374,3 +389,4 @@ class VortexStreet(VortexSim):
 
         # Plot line chart
         plt.plot(pressures)
+        plt.plot([0, length], [0, 0], 'r')
