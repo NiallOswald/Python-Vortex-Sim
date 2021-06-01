@@ -1,20 +1,20 @@
 class VortexSim():
-    'An analytic vortex simulation for n vortices of set strengths'
+    'An analytic vortex simulation for n vortices of set circulations'
 
     # Class-wide imports
     import numpy as np
 
-    def __init__(self, vortex_points, strengths = None, *, dimensions = ((-2, -2), (2, 2)), damping = 0.0, step = 20, underlying_velocity = None):
+    def __init__(self, vortex_points, circulations = None, *, dimensions = ((-2, -2), (2, 2)), damping = 0.0, step = 20, underlying_velocity = None):
         """
         Parameters:
 
             vortex_points (list): A list of tuples of length 2 containing the coordinates of the vortices
 
-            strengths (list): A list of floats which represent the strength of the vortex. A negative strength is equivalent to a negatively signed vortex
+            circulations (list): A list of floats which represent the circulation of the vortex. A negative circulation is equivalent to a negatively signed vortex
 
             dimensions (tuple): A tuple of length 4 containing the coordinates of the corners of the plot over which the vectors are evaluated
 
-            damping (float): A non-negative float between 0 and 1, which is used to reduce the strengths of the vortices at each step of time
+            damping (float): A non-negative float between 0 and 1, which is used to reduce the circulations of the vortices at each step of time
 
             step (int): An integer representing the ratio of points in the heatmap to vectors plotted in the quiver plot
 
@@ -26,11 +26,11 @@ class VortexSim():
         ## Setting the coordinates of each vortex
         self.vortex_points = vortex_points
 
-        ## Setting the strength of each vortex
-        if strengths == None:
-            self.strengths = [1 for i in vortex_points]
+        ## Setting the circulation of each vortex
+        if circulations == None:
+            self.circulations = [1 for i in vortex_points]
         else:
-            self.strengths = strengths
+            self.circulations = circulations
 
         ## Setting the damping factor of each vortex
         self.damping = damping
@@ -48,7 +48,7 @@ class VortexSim():
         else:
             self.dxdtf, self.dydtf = underlying_velocity[0], underlying_velocity[1]
 
-    def update_velocities(self, x, y, x0, y0, strength):
+    def update_velocities(self, x, y, x0, y0, circulation):
         'Finds velocities of a single vortex, when the vortex is translated away from the origin'
         
         # Translated point field
@@ -56,8 +56,8 @@ class VortexSim():
         yt = y - y0
         
         # Generate new velocities
-        dxdt = -strength*yt/(xt**2 + yt**2)
-        dydt = strength*xt/(xt**2 + yt**2)
+        dxdt = -circulation*yt/(xt**2 + yt**2)
+        dydt = circulation*xt/(xt**2 + yt**2)
         
         # Return new velocities
         return (dxdt, dydt)
@@ -71,46 +71,30 @@ class VortexSim():
         
         xm, ym = vortex_movable[0], vortex_movable[1]
         
-        # Removing the strength of the movable vortex, as to prevent iteration problems
-        fixed_strengths = self.strengths.copy()
-        fixed_strengths.pop(movable)
+        # Removing the circulation of the movable vortex, as to prevent iteration problems
+        fixed_circulations = self.circulations.copy()
+        fixed_circulations.pop(movable)
         
         # Defining lambda expressions to calculate the derivative at xm, ym for each fixed vortex
-        x_deriv = lambda xf, yf, strength: -strength*(ym - yf)/((xm - xf)**2 + (ym - yf)**2)
-        y_deriv = lambda xf, yf, strength: strength*(xm - xf)/((xm - xf)**2 + (ym - yf)**2)
+        x_deriv = lambda xf, yf, circulation: -(circulation/(2*self.np.pi))*(ym - yf)/((xm - xf)**2 + (ym - yf)**2)
+        y_deriv = lambda xf, yf, circulation: (circulation/(2*self.np.pi))*(xm - xf)/((xm - xf)**2 + (ym - yf)**2)
         
         # Sets the initial values to the underlying vector field at (xm, ym)
         dxdt, dydt = self.dxdtf(xm, ym), self.dydtf(xm, ym)
 
         # Sums the derivatives of each fixed vortex to find the new location of the movable vortex
         for i in enumerate(vortex_fixed):
-            dxdt += x_deriv(i[1][0], i[1][1], fixed_strengths[i[0]])
-            dydt += y_deriv(i[1][0], i[1][1], fixed_strengths[i[0]])
+            dxdt += x_deriv(i[1][0], i[1][1], fixed_circulations[i[0]])
+            dydt += y_deriv(i[1][0], i[1][1], fixed_circulations[i[0]])
         
         # Return updated vortex position
         return (xm + delta*dxdt, ym + delta*dydt)
 
-    def calculate_pressure(self, v, *, rho = 1.0):
-        'Calculates the pressure at each point'
+    def update_data(self, num, x, y, delta, threshold):
+        'Updates plotting data for each frame'
 
-        return 0.5*rho*(v**2)
-
-    def spread_pressure(self, p):
-        'Geneates a new field of the average pressure around each point'
-
-        from scipy import ndimage
-
-        self.watchdog += 1
-        if self.watchdog % 10 == 0:
-            print("Frame no:", self.watchdog)
-
-        return ndimage.generic_filter(p, self.np.nanmean, size = 5, mode = 'constant', cval = self.np.NaN)
-
-    def update_plots(self, num, x, y, delta, threshold, heatmap):
-        'Updates the plots for each frame'
-
-        # Update strengths with damping factor
-        self.strengths = [x*(1 - self.damping) for x in self.strengths]
+        # Update circulations with damping factor
+        self.circulations = [x*(1 - self.damping) for x in self.circulations]
         
         # Update the positions of the vortices
         updated_vortex_points = [self.move_vortex(i, delta) for i in range(len(self.vortex_points))]
@@ -118,7 +102,7 @@ class VortexSim():
         self.vortex_points = updated_vortex_points.copy()
         
         # Find the velocities generated by each vortex singularly
-        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.strengths[i[0]]) for i in enumerate(self.vortex_points)]
+        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.circulations[i[0]]) for i in enumerate(self.vortex_points)]
         
         # Sum to find the total velocities induced by all vortices
         dxdt, dydt = 0, 0
@@ -139,24 +123,28 @@ class VortexSim():
                 for j in range(len(dxdtq[i])):
                     if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
                         dxdtq[i][j], dydtq[i][j] = 0, 0
-        
-        # Find which heatmap to plot
-        if heatmap == 'velocity':
-            heatmapData = v
-        elif heatmap == 'pressure':
-            heatmapData = self.calculate_pressure(v)
-        elif heatmap == 'average':
-            p = self.calculate_pressure(v)
-            heatmapData = self.spread_pressure(p)
 
         # Update plot data
         self.Q.set_UVC(dxdtq, dydtq)
-        self.im.set_array(heatmapData)
+        self.im.set_array(v)
         
         # Return updated plots
         return [self.im, self.Q]
 
-    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6), threshold = None, heatmap = 'velocity'):
+    def update_plots(self, num, x, y, delta, threshold):
+        'Updates the plots for each frame'
+
+        # Update plotting data
+        dxdtq, dydtq, v = self.update_data(num, x, y, delta, threshold)
+        
+        # Update plot data
+        self.Q.set_UVC(dxdtq, dydtq)
+        self.im.set_array(v)
+        
+        # Return updated plots
+        return [self.im, self.Q]
+
+    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6), threshold = None):
         """
         Saves a gif of the vortex simulation to filepath
 
@@ -172,8 +160,6 @@ class VortexSim():
 
             threshold (float): A float which is used as a cutoff for the square of the the modulus of the velocity vector. Any velocities with such a modulus
                                 are excluded from the quiver plot, so it is easier to see the position of the point vortex
-
-            heatmap (str): A string which sets what is plotted on the heatmap, either velocity, pressure, or an average local pressure
         """
         
         # Imports
@@ -192,7 +178,7 @@ class VortexSim():
         yq = [i[::self.step] for i in y[::self.step]]
 
         # Generating initial velocity data
-        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.strengths[i[0]]) for i in enumerate(self.vortex_points)]
+        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.circulations[i[0]]) for i in enumerate(self.vortex_points)]
 
         dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
         for i in velocities:
@@ -200,17 +186,6 @@ class VortexSim():
             dydt += i[1]
 
         v = self.np.sqrt(dxdt**2 + dydt**2)
-        
-        # Find which heatmap to plot
-        if heatmap == 'velocity':
-            heatmapData = v
-        elif heatmap == 'pressure':
-            heatmapData = self.calculate_pressure(v)
-        elif heatmap == 'average':
-            print("WARNING: Very long execution time, keep frames low")
-            p = self.calculate_pressure(v)
-            self.watchdog = 0
-            heatmapData = self.spread_pressure(p)
 
         # Generating initial velocity data for quiver plot
         dxdtq = [i[::self.step] for i in dxdt[::self.step]]
@@ -227,19 +202,19 @@ class VortexSim():
         self.fig, self.ax = plt.subplots(figsize = gifdim)
 
         # Setting plotting dimensions for the heatmap
-        extent = [self.x1, self.x2, self.y1, self.y2]
+        extent = [self.x1, self.x2, self.y1, self.y2]  
 
         # Normalising the heatmap colours using a log stretch
-        norm = ImageNormalize(v, interval = MinMaxInterval(), stretch = LogStretch())
+        norm = ImageNormalize(v, interval = MinMaxInterval(), stretch = LogStretch())      
 
         # Plotting the initial heatmap
-        self.im = self.ax.imshow(heatmapData, origin = 'lower', norm = norm, extent = extent)
+        self.im = self.ax.imshow(v, origin = 'lower', norm = norm, extent = extent)
 
         # Plotting the initial quiver plot
         self.Q = self.ax.quiver(xq, yq, dxdtq, dydtq, pivot = 'mid')
 
         # Animating the movement of the quiver plot
-        animator = FuncAnimation(self.fig, self.update_plots, fargs = (x, y, delta, threshold, heatmap), frames = frames, interval = interval, blit = False)
+        animator = FuncAnimation(self.fig, self.update_plots, fargs = (x, y, delta, threshold), frames = frames, interval = interval, blit = False)
         self.fig.tight_layout()
 
         # Saving gif of animation
@@ -261,7 +236,7 @@ class VortexStreet(VortexSim):
 
             dimensions (tuple): A tuple of length 2 containing the coordinates of the corners of the plot over which the vectors are evaluated as tuples
 
-            damping (float): A non-negative float between 0 and 1, which is used to reduce the strengths of the vortices at each frame
+            damping (float): A non-negative float between 0 and 1, which is used to reduce the circulations of the vortices at each frame
 
             step (int): An integer representing the ratio of points in the heatmap to vectors plotted in the quiver plot
         """
@@ -289,32 +264,32 @@ class VortexStreet(VortexSim):
         ## Setting the coordinates of the initial vortex
         self.vortex_points = [generation_points[0]]
 
-        ## Setting the strength of the initial vortex
-        self.strengths = [-1]
+        ## Setting the circulation of the initial vortex
+        self.circulations = [-1]
 
-    def new_vortex(self, i, strength = 1):
+    def new_vortex(self, i, circulation = 1):
         'Adds a new vortex at one of the generation point periodically'
 
-        self.place_vortex(self.generation_points[i % 2], strength)
+        self.place_vortex(self.generation_points[i % 2], circulation)
 
-    def place_vortex(self, coords, strength):
+    def place_vortex(self, coords, circulation):
         'Adds a new vortex at the given points'
 
         # Updates vortex_points
         self.vortex_points.append((coords[0], coords[1]))
 
-        # Updates strengths
-        self.strengths.append(strength)
+        # Updates circulations
+        self.circulations.append(circulation)
 
-    def update_plots(self, num, x, y, delta, threshold, heatmap):
-        'Updates the plots for each frame'
+    def update_data(self, num, x, y, delta, threshold):
+        'Updates plotting data for each frame'
 
         # Determine whether a new vortex is to be placed
         if (num % self.period == 0) and (num != 0):
             self.new_vortex(num//self.period, (-1)**(num//self.period + 1))
 
-        # Update strengths with damping factor
-        self.strengths = [x*(1 - self.damping) for x in self.strengths]
+        # Update circulations with damping factor
+        self.circulations = [i*(1 - self.damping) for i in self.circulations]
         
         # Update the positions of the vortices
         updated_vortex_points = [self.move_vortex(i, delta) for i in range(len(self.vortex_points))]
@@ -322,7 +297,7 @@ class VortexStreet(VortexSim):
         self.vortex_points = updated_vortex_points.copy()
         
         # Find the velocities generated by each vortex singularly
-        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.strengths[i[0]]) for i in enumerate(self.vortex_points)]
+        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.circulations[i[0]]) for i in enumerate(self.vortex_points)]
         
         # Sets the initial values of the underlying vector field
         dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
@@ -335,29 +310,67 @@ class VortexStreet(VortexSim):
         # Generate a scalar speed by taking the absolute value of all the velocity vectors
         v = self.np.sqrt(dxdt**2 + dydt**2)
         
-        # Create a lower resolution list of velocities for use in the quiver plot
-        dxdtq = [i[::self.step] for i in dxdt[::self.step]]
-        dydtq = [i[::self.step] for i in dydt[::self.step]]
+        if threshold > 0:
+            # Create a lower resolution list of velocities for use in the quiver plot
+            dxdtq = [i[::self.step] for i in dxdt[::self.step]]
+            dydtq = [i[::self.step] for i in dydt[::self.step]]
 
-        # Remove velocities above a cut-off threshold
-        if threshold != None:
-            for i in range(len(dxdtq)):
-                for j in range(len(dxdtq[i])):
-                    if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
-                        dxdtq[i][j], dydtq[i][j] = 0, 0
+            # Remove velocities above a cut-off threshold
+            if threshold != None:
+                for i in range(len(dxdtq)):
+                    for j in range(len(dxdtq[i])):
+                        if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold:
+                            dxdtq[i][j], dydtq[i][j] = 0, 0
 
-        # Find which heatmap to plot
-        if heatmap == 'velocity':
-            heatmapData = v
-        elif heatmap == 'pressure':
-            heatmapData = self.calculate_pressure(v)
-        elif heatmap == 'average':
-            p = self.calculate_pressure(v)
-            heatmapData = self.spread_pressure(p)
+            # Return updated data
+            return dxdtq, dydtq, v
+        else:
+            # Return updated velocity
+            return v
+
+    def calculate_pressure(self, num, x, y, delta, rho):
+        'Calculates pressures at each frame'
+
+        # Calculate velocity at each point
+        v = self.update_data(num, x, y, delta, 0)
+
+        v_1, v_2 = v[0][0], v[1][1]
+
+        # Return delta p
+        return 0.5*rho*(v_2**2 - v_1**2)
+
+    def plot_pressure(self, pos, length, *, delta = 0.05, rho = 1.0, imdim = (6, 6)):
+        """Plots a line graph of pressure at the two given points
         
-        # Update plot data
-        self.Q.set_UVC(dxdtq, dydtq)
-        self.im.set_array(heatmapData)
-        
-        # Return updated plots
-        return [self.im, self.Q]
+        Parameters:
+
+            pos (tuple): A tuple of positions on which to evaluate the pressure. Delta p will be given as p_1 - p_2
+            
+            length (int): Number of frames of over which to plot the pressure changes
+
+            delta (float): A float representing the size of steps between each frame
+
+            rho (float): 
+
+            imdim (): 
+        """
+
+        # Imports
+        import matplotlib.pyplot as plt
+
+        # Change formatting of point to integrate with other methods
+        x_values = self.np.array([pos[0][0], pos[1][0]])
+        y_values = self.np.array([pos[0][1], pos[1][1]])
+
+        x, y = self.np.meshgrid(x_values, y_values)
+
+        # Generating pressure data
+        pressures = [self.calculate_pressure(i, x, y, delta, rho) for i in range(length)]
+
+        # Setting up the plot
+        plt.figure(figsize = imdim)
+        plt.xlabel('Frames')
+        plt.ylabel('Delta p')
+
+        # Plot line chart
+        plt.plot(pressures)
