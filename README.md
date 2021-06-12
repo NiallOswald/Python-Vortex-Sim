@@ -1,18 +1,20 @@
 # Python-Vortex-Sim
 A simple Python tool to model the behaviour of vortices in the plane.
 
-Functionality so far allows for any number of vortices of varying 'strength' to have their initial positions plotted on the plane, and then a gif is produced of the behaviour of the vortices over time.
+It is possible to plot any number of vortices of a set circulation and produce an animation of their movement over time.
 
 Some simple examples can be found below:
 
-![vortexdiagram](https://user-images.githubusercontent.com/79726292/119240588-7f236e80-bb48-11eb-9109-cb676fb66c25.gif)
+<img src="https://user-images.githubusercontent.com/79726292/121782886-b0211d00-cba3-11eb-86d8-3a9b0802ce12.PNG" height="300">
 
-![vortexdiagram](https://user-images.githubusercontent.com/79726292/119240754-cb22e300-bb49-11eb-9cdf-b1097a1c6bf8.gif)
+<img src="https://user-images.githubusercontent.com/79726292/121782880-a4cdf180-cba3-11eb-9f57-bad0e21ac9ea.png" height="300">
 
-So far the simulation plots a quiver plot of the direction of flow over a heatmap of the magnitude of the velocities at each point. There is a fair amount of customisability within the arguments, but do be aware there is little protection against singularities, so if you have division by zero error try different bounds so the velocity is never evaluated at the singularity. 
+So far the simulation plots a quiver plot of the direction of flow over a heatmap of the magnitude of the velocities at each point. There is a fair amount of customisability within the arguments, including a 'damping' factor that allows vortices to fade-out over time, as well as many options for the generated plot.
 
-This is quite a simple tool so far, but it is very easy to use, and I plan to add some more functionality to it over the coming weeks.
+It is also possible to plot a pseudo-simulation of a Karman Vortex Street, as well as finding the pressure difference between two points and produce a plot.
 
-Currently working on vortex street simulations. Some functionality already included, here is a quick demo:
+This is a fairly simple tool that is easy to work with, but it is a simple and fast way to plot vortex motion without a fluid simulation.
 
-![vortexplot](https://user-images.githubusercontent.com/79726292/119266355-623b7980-bbe2-11eb-8748-0172ebda7498.gif)
+<img src="https://user-images.githubusercontent.com/79726292/121782895-b911ee80-cba3-11eb-8e30-a246e0ce4c21.png" height="300">
+
+<img src="https://user-images.githubusercontent.com/79726292/121782898-bca57580-cba3-11eb-9e88-5860222bfbb7.png" height="300">
