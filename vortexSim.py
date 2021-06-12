@@ -225,6 +225,60 @@ class VortexSim():
         writergif = PillowWriter(fps = 30) 
         animator.save(r'vortexplot.gif', writer = writergif)
 
+    def calculate_pressure(self, num, x, y, delta, rho):
+        'Calculates pressures at each frame'
+
+        # Calculate velocity at each point
+        v = self.update_data(num, x, y, delta, 0)
+
+        v_1, v_2 = v[0][0], v[1][1]
+
+        # Return delta p
+        return 0.5*rho*(v_2**2 - v_1**2)
+
+    def plot_pressure(self, pos, length, *, delta = 0.05, rho = 1.225, imdim = (6, 6)):
+        """Plots a line graph of pressure at the two given points
+        
+        Parameters:
+
+            pos (tuple): A tuple of positions on which to evaluate the pressure. Delta p will be given as p_1 - p_2
+            
+            length (int): Number of frames of over which to plot the pressure changes
+
+            delta (float): A float representing the size of steps between each frame
+
+            rho (float): A float containing the fluid density at all points (assumed constant)
+
+            imdim (tuple): A tuple containing the dimension of the output plot
+        """
+
+        # Imports
+        import matplotlib.pyplot as plt
+
+        # Change formatting of point to integrate with other methods
+        x_values = self.np.array([pos[0][0], pos[1][0]])
+        y_values = self.np.array([pos[0][1], pos[1][1]])
+
+        x, y = self.np.meshgrid(x_values, y_values)
+
+        # Setting the coordinates of each vortex
+        self.vortex_points = self.initial_state.copy()
+
+        # Setting the circulation of each vortex
+        self.circulations = self.initial_circulations.copy()
+
+        # Generating pressure data
+        pressures = [self.calculate_pressure(i, x, y, delta, rho) for i in range(length)]
+
+        # Setting up the plot
+        plt.figure(figsize = imdim)
+        plt.xlabel('Frames')
+        plt.ylabel('Delta p')
+
+        # Plot line chart
+        plt.plot(pressures)
+        plt.plot([0, length], [0, 0], 'r')
+
 class VortexStreet(VortexSim):
     'A pseudo-simulation for a vortex street'
 
@@ -338,57 +392,3 @@ class VortexStreet(VortexSim):
 
             # Return updated data
             return dxdtq, dydtq, v
-
-    def calculate_pressure(self, num, x, y, delta, rho):
-        'Calculates pressures at each frame'
-
-        # Calculate velocity at each point
-        v = self.update_data(num, x, y, delta, 0)
-
-        v_1, v_2 = v[0][0], v[1][1]
-
-        # Return delta p
-        return 0.5*rho*(v_2**2 - v_1**2)
-
-    def plot_pressure(self, pos, length, *, delta = 0.05, rho = 1.225, imdim = (6, 6)):
-        """Plots a line graph of pressure at the two given points
-        
-        Parameters:
-
-            pos (tuple): A tuple of positions on which to evaluate the pressure. Delta p will be given as p_1 - p_2
-            
-            length (int): Number of frames of over which to plot the pressure changes
-
-            delta (float): A float representing the size of steps between each frame
-
-            rho (float): A float containing the fluid density at all points (assumed constant)
-
-            imdim (tuple): A tuple containing the dimension of the output plot
-        """
-
-        # Imports
-        import matplotlib.pyplot as plt
-
-        # Change formatting of point to integrate with other methods
-        x_values = self.np.array([pos[0][0], pos[1][0]])
-        y_values = self.np.array([pos[0][1], pos[1][1]])
-
-        x, y = self.np.meshgrid(x_values, y_values)
-
-        # Setting the coordinates of each vortex
-        self.vortex_points = self.initial_state.copy()
-
-        # Setting the circulation of each vortex
-        self.circulations = self.initial_circulations.copy()
-
-        # Generating pressure data
-        pressures = [self.calculate_pressure(i, x, y, delta, rho) for i in range(length)]
-
-        # Setting up the plot
-        plt.figure(figsize = imdim)
-        plt.xlabel('Frames')
-        plt.ylabel('Delta p')
-
-        # Plot line chart
-        plt.plot(pressures)
-        plt.plot([0, length], [0, 0], 'r')
