@@ -1,4 +1,4 @@
-"""Vortex silumation module for Python."""
+"""Vortex simulation module for Python."""
 
 
 class VortexSim:
