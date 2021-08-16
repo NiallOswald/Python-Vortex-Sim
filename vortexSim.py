@@ -1,188 +1,202 @@
-class VortexSim():
-    'An analytic vortex simulation for n vortices of set circulations'
+"""Vortex silumation module for Python."""
 
-    # Class-wide imports
+
+class VortexSim:
+    """An analytic vortex simulation for n vortices."""
+
     import numpy as np
 
-    def __init__(self, vortex_points, circulations = None, *, dimensions = ((-2, -2), (2, 2)), damping = 0.0, step = 20, underlying_velocity = None):
+    def __init__(
+        self, vortex_points, circulations=None, *,
+        dimensions=((-2, -2), (2, 2)), damping=0.0, step=20,
+        underlying_velocity=None
+    ):
         """
+        Initialise VortexSim class.
+
         Parameters:
 
-            vortex_points (list): A list of tuples of length 2 containing the coordinates of the vortices
+            vortex_points (list): A list of tuples of length 2 containing the
+                                  coordinates of the vortices
 
-            circulations (list): A list of floats which represent the circulation of the vortex. A negative circulation is equivalent to a negatively signed vortex
+            circulations (list): A list of floats which represent the
+                                 circulation of the vortex. A negative
+                                 circulation is equivalent to a negatively
+                                 signed vortex
 
-            dimensions (tuple): A tuple of length 4 containing the coordinates of the corners of the plot over which the vectors are evaluated
+            dimensions (tuple): A tuple of length 4 containing the coordinates
+                                of the corners of the plot over which the
+                                vectors are evaluated
 
-            damping (float): A non-negative float between 0 and 1, which is used to reduce the circulations of the vortices at each step of time
+            damping (float): A non-negative float between 0 and 1, which is
+                             used to reduce the circulations of the vortices
+                             at each step of time
 
-            step (int): An integer representing the ratio of points in the heatmap to vectors plotted in the quiver plot
+            step (int): An integer representing the ratio of points in the
+                        heatmap to vectors plotted in the quiver plot
 
-            underlying_velocity (tuple): A tuple of two lambda functions which give the constant underlying vector field
+            underlying_velocity (tuple): A tuple of two lambda functions which
+                                         give the constant underlying vector
+                                         field
         """
 
-        # Initial setup
-
-        ## Setting the initial positions of each vortex
         self.initial_state = vortex_points
 
-        ## Setting the initial circulation of each vortex
-        if circulations == None:
-            self.initial_circulations = [2*self.np.pi for i in vortex_points]
+        if circulations is None:
+            self.initial_circulations = [2*self.np.pi]*len(vortex_points)
         else:
             self.initial_circulations = circulations
 
-        ## Setting the damping factor of each vortex
         self.damping = damping
 
-        ## Setting the dimensions of the plot
-        self.x1, self.y1, self.x2, self.y2 = dimensions[0][0], dimensions[0][1], dimensions[1][0], dimensions[1][1]
+        self.x1 = dimensions[0][0]
+        self.y1 = dimensions[0][1]
+        self.x2 = dimensions[1][0]
+        self.y2 = dimensions[1][1]
 
-        ## Setting the ratio of heatmap points to vectors
         self.step = step
 
-        ## Setting the underlying vector field as lambda functions
-        if underlying_velocity == None:
+        if underlying_velocity is None:
             self.dxdtf = lambda x, y: 0
             self.dydtf = lambda x, y: 0
         else:
-            self.dxdtf, self.dydtf = underlying_velocity[0], underlying_velocity[1]
+            self.dxdtf = underlying_velocity[0]
+            self.dydtf = underlying_velocity[1]
 
     def update_velocities(self, x, y, x0, y0, circulation):
-        'Finds velocities of a single vortex, when the vortex is translated away from the origin'
-        
+        """Find velocity field of a single vortex."""
+
         # Translated point field
         xt = x - x0
         yt = y - y0
-        
-        # Generate new velocities
+
         dxdt = -(circulation/(2*self.np.pi))*yt/(xt**2 + yt**2)
         dydt = (circulation/(2*self.np.pi))*xt/(xt**2 + yt**2)
-        
-        # Return new velocities
+
         return (dxdt, dydt)
 
     def move_vortex(self, movable, delta):
-        'Finds the velocity vector acting on a vortex, when that vortex is removed'
-        
-        # Creates a copy of vortex_points and then pops the movable vortex
+        """Update the location of a vortex."""
+
         vortex_fixed = self.vortex_points.copy()
         vortex_movable = vortex_fixed.pop(movable)
-        
+
         xm, ym = vortex_movable[0], vortex_movable[1]
-        
-        # Removing the circulation of the movable vortex, as to prevent iteration problems
+
         fixed_circulations = self.circulations.copy()
         fixed_circulations.pop(movable)
-        
-        # Defining lambda expressions to calculate the derivative at xm, ym for each fixed vortex
-        x_deriv = lambda xf, yf, circulation: -(circulation/(2*self.np.pi))*(ym - yf)/((xm - xf)**2 + (ym - yf)**2)
-        y_deriv = lambda xf, yf, circulation: (circulation/(2*self.np.pi))*(xm - xf)/((xm - xf)**2 + (ym - yf)**2)
-        
+
+        # Defining lambda expressions to calculate derivatives at (xm, ym)
+        x_deriv = lambda xf, yf, circulation: (  # noqa: E731
+            -circulation*(ym - yf)/(2*self.np.pi*((xm - xf)**2 + (ym - yf)**2))
+        )
+        y_deriv = lambda xf, yf, circulation: (  # noqa: E731
+            circulation*(xm - xf)/(2*self.np.pi*((xm - xf)**2 + (ym - yf)**2))
+        )
+
         # Sets the initial values to the underlying vector field at (xm, ym)
         dxdt, dydt = self.dxdtf(xm, ym), self.dydtf(xm, ym)
 
-        # Sums the derivatives of each fixed vortex to find the new location of the movable vortex
+        # Sum the derivatives
         for i in enumerate(vortex_fixed):
             dxdt += x_deriv(i[1][0], i[1][1], fixed_circulations[i[0]])
             dydt += y_deriv(i[1][0], i[1][1], fixed_circulations[i[0]])
-        
-        # Return updated vortex position
+
         return (xm + delta*dxdt, ym + delta*dydt)
 
     def update_data(self, num, x, y, delta, threshold):
-        'Updates plotting data for each frame'
+        """Update plotting data for each frame."""
 
         # Update circulations with damping factor
         self.circulations = [i*(1 - self.damping) for i in self.circulations]
-        
-        # Update the positions of the vortices
-        updated_vortex_points = [self.move_vortex(i, delta) for i in range(len(self.vortex_points))]
-        
-        self.vortex_points = updated_vortex_points.copy()
-        
-        # Find the velocities generated by each vortex singularly
-        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.circulations[i[0]]) for i in enumerate(self.vortex_points)]
-        
-        # Sets the initial values of the underlying vector field
-        dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
 
-        # Sum to find the total velocities induced by all vortices
+        updated_vortex_points = [self.move_vortex(i, delta)
+                                 for i in range(len(self.vortex_points))]
+
+        self.vortex_points = updated_vortex_points.copy()
+
+        # Find the velocities generated by each vortex singularly
+        velocities = [self.update_velocities(x, y, i[1][0], i[1][1],
+                                             self.circulations[i[0]])
+                      for i in enumerate(self.vortex_points)]
+
+        # Sum all velocities
+        dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
         for i in velocities:
             dxdt += i[0]
             dydt += i[1]
-        
-        # Generate a scalar speed by taking the absolute value of all the velocity vectors
+
+        # Generate a scalar speed
         v = self.np.sqrt(dxdt**2 + dydt**2)
-        
-        # Create a lower resolution list of velocities for use in the quiver plot
+
+        # Create a lower resolution list of velocities for the quiver plot
         dxdtq = [i[::self.step] for i in dxdt[::self.step]]
         dydtq = [i[::self.step] for i in dydt[::self.step]]
 
         # Remove velocities above a cut-off threshold
-        if threshold != None:
+        if threshold is not None:
             for i in range(len(dxdtq)):
                 for j in range(len(dxdtq[i])):
                     if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold**2:
                         dxdtq[i][j], dydtq[i][j] = 0, 0
 
-        # Return updated data
         return dxdtq, dydtq, v
 
     def update_plots(self, num, x, y, delta, threshold):
-        'Updates the plots for each frame'
+        """Update the plots for each frame."""
 
-        # Update plotting data
         dxdtq, dydtq, v = self.update_data(num, x, y, delta, threshold)
-        
-        # Update plot data
+
         self.Q.set_UVC(dxdtq, dydtq)
         self.im.set_array(v)
-        
-        # Return updated plots
+
         return [self.im, self.Q]
 
-    def save_sim(self, *, frames = 100, interval = 50, delta = 0.05, gifdim = (6, 6), threshold = None):
+    def save_sim(self, *, frames=100, interval=50, delta=0.05, gifdim=(6, 6),
+                 threshold=None):
         """
-        Saves a gif of the vortex simulation to filepath
+        Save a gif of the vortex simulations.
 
         Parameters:
 
             frames (int): The total number of frames present in the gif
 
-            interval (int): The number of milliseconds between frames in the gif
+            interval (int): The number of milliseconds between frames in the
+                            gif
 
-            delta (float): A float representing the size of steps between each frame
+            delta (float): A float representing the size of steps between each
+                           frame
 
-            gifdim (tuple): A tuple containing the dimension of the output gif (Note this is not the dimension of the plot)
+            gifdim (tuple): A tuple containing the dimension of the output gif
+                            (Note this is not the dimension of the plot)
 
-            threshold (float): A float which is used as a cutoff for the square of the the modulus of the velocity vector. Any velocities with such a modulus
-                                are excluded from the quiver plot, so it is easier to see the position of the point vortex
+            threshold (float): A float which is used as a cutoff for the
+                               square of the the modulus of the velocity
+                               vector. Any velocities with such a modulus
+                               are excluded from the quiver plot, so it is
+                               easier to see the position of the point vortex
         """
-        
-        # Imports
+
         import matplotlib.pyplot as plt
         from matplotlib.animation import (FuncAnimation, PillowWriter)
-        from astropy.visualization import (MinMaxInterval, LogStretch, ImageNormalize)
+        from astropy.visualization import (MinMaxInterval, LogStretch,
+                                           ImageNormalize)
 
-        # Fixing points for the heatmap
         x_values = self.np.linspace(self.x1, self.x2, 100*(self.x2 - self.x1))
         y_values = self.np.linspace(self.y1, self.y2, 100*(self.y2 - self.y1))
 
         x, y = self.np.meshgrid(x_values, y_values)
 
-        # Fixing locations of each vector
         xq = [i[::self.step] for i in x[::self.step]]
         yq = [i[::self.step] for i in y[::self.step]]
 
-        # Setting the coordinates of each vortex
         self.vortex_points = self.initial_state.copy()
 
-        # Setting the circulation of each vortex
         self.circulations = self.initial_circulations.copy()
 
-        # Generating initial velocity data
-        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.circulations[i[0]]) for i in enumerate(self.vortex_points)]
+        velocities = [self.update_velocities(x, y, i[1][0], i[1][1],
+                                             self.circulations[i[0]])
+                      for i in enumerate(self.vortex_points)]
 
         dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
         for i in velocities:
@@ -196,63 +210,70 @@ class VortexSim():
         dydtq = [i[::self.step] for i in dydt[::self.step]]
 
         # Remove velocities above a cut-off threshold
-        if threshold != None:
+        if threshold is not None:
             for i in range(len(dxdtq)):
                 for j in range(len(dxdtq[i])):
                     if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold**2:
                         dxdtq[i][j], dydtq[i][j] = 0, 0
 
         # Setting up the plot
-        self.fig, self.ax = plt.subplots(figsize = gifdim)
+        self.fig, self.ax = plt.subplots(figsize=gifdim)
 
         # Setting plotting dimensions for the heatmap
-        extent = [self.x1, self.x2, self.y1, self.y2]  
+        extent = [self.x1, self.x2, self.y1, self.y2]
 
         # Normalising the heatmap colours using a log stretch
-        norm = ImageNormalize(v, interval = MinMaxInterval(), stretch = LogStretch())      
+        norm = ImageNormalize(v, interval=MinMaxInterval(),
+                              stretch=LogStretch())
 
         # Plotting the initial heatmap
-        self.im = self.ax.imshow(v, origin = 'lower', norm = norm, extent = extent)
+        self.im = self.ax.imshow(v, origin='lower', norm=norm, extent=extent)
 
         # Plotting the initial quiver plot
-        self.Q = self.ax.quiver(xq, yq, dxdtq, dydtq, pivot = 'mid')
+        self.Q = self.ax.quiver(xq, yq, dxdtq, dydtq, pivot='mid')
 
         # Animating the movement of the quiver plot
-        animator = FuncAnimation(self.fig, self.update_plots, fargs = (x, y, delta, threshold), frames = frames, interval = interval, blit = False)
+        animator = FuncAnimation(
+            self.fig, self.update_plots, fargs=(x, y, delta, threshold),
+            frames=frames, interval=interval, blit=False
+        )
         self.fig.tight_layout()
 
         # Saving gif of animation
-        writergif = PillowWriter(fps = 30) 
-        animator.save(r'vortexplot.gif', writer = writergif)
+        writergif = PillowWriter(fps=30)
+        animator.save(r'vortexplot.gif', writer=writergif)
 
     def calculate_pressure(self, num, x, y, delta, rho):
-        'Calculates pressures at each frame'
+        """Calculate pressures at each frame"""
 
         # Calculate velocity at each point
         v = self.update_data(num, x, y, delta, 0)
 
         v_1, v_2 = v[0][0], v[1][1]
 
-        # Return delta p
         return 0.5*rho*(v_2**2 - v_1**2)
 
-    def plot_pressure(self, pos, length, *, delta = 0.05, rho = 1.225, imdim = (6, 6)):
-        """Plots a line graph of pressure at the two given points
-        
+    def plot_pressure(self, pos, length, *, delta=0.05, rho=1.225,
+                      imdim=(6, 6)):
+        """Plot a line graph of pressure at the two given points.
+
         Parameters:
 
-            pos (tuple): A tuple of positions on which to evaluate the pressure. Delta p will be given as p_1 - p_2
-            
-            length (int): Number of frames of over which to plot the pressure changes
+            pos (tuple): A tuple of positions on which to evaluate the
+                         pressure. Delta p will be given as p_1 - p_2
 
-            delta (float): A float representing the size of steps between each frame
+            length (int): Number of frames of over which to plot the pressure
+                          changes
 
-            rho (float): A float containing the fluid density at all points (assumed constant)
+            delta (float): A float representing the size of steps between each
+                           frame
+
+            rho (float): A float containing the fluid density at all points
+                         (assumed constant)
 
             imdim (tuple): A tuple containing the dimension of the output plot
         """
 
-        # Imports
         import matplotlib.pyplot as plt
 
         # Change formatting of point to integrate with other methods
@@ -268,10 +289,11 @@ class VortexSim():
         self.circulations = self.initial_circulations.copy()
 
         # Generating pressure data
-        pressures = [self.calculate_pressure(i, x, y, delta, rho) for i in range(length)]
+        pressures = [self.calculate_pressure(i, x, y, delta, rho)
+                     for i in range(length)]
 
         # Setting up the plot
-        plt.figure(figsize = imdim)
+        plt.figure(figsize=imdim)
         plt.xlabel('Frames')
         plt.ylabel('Delta p')
 
@@ -279,53 +301,66 @@ class VortexSim():
         plt.plot(pressures)
         plt.plot([0, length], [0, 0], 'r')
 
-class VortexStreet(VortexSim):
-    'A pseudo-simulation for a vortex street'
 
-    def __init__(self, generation_points, period, underlying_velocity, *, dimensions = ((-2, -2), (2, 2)), damping = 0.0, step = 20, circulation = None):
+class VortexStreet(VortexSim):
+    """A pseudo-simulation for a vortex street."""
+
+    def __init__(
+        self, generation_points, period, underlying_velocity, *,
+        dimensions=((-2, -2), (2, 2)), damping=0.0, step=20,
+        circulation=None
+    ):
         """
+        Initialise VortexStreet class.
+
         Parameters:
 
-            generation_points (tuple): A tuple of tuples of length 2, containing the coordinates of two points where vortices are generated periodically
+            generation_points (tuple): A tuple of tuples of length 2,
+                                       containing the coordinates of two
+                                       points where vortices are generated
+                                       periodically
 
-            period (int): An integer representing the number of frames between vortices generated
+            period (int): An integer representing the number of frames between
+                          vortices generated
 
-            underlying_velocity (tuple): A tuple of two lambda functions which give the constant underlying vector field
+            underlying_velocity (tuple): A tuple of two lambda functions which
+                                         give the constant underlying vector
+                                         field
 
-            dimensions (tuple): A tuple of length 2 containing the coordinates of the corners of the plot over which the vectors are evaluated as tuples
+            dimensions (tuple): A tuple of length 2 containing the coordinates
+                                of the corners of the plot over which the
+                                vectors are evaluated as tuples
 
-            damping (float): A non-negative float between 0 and 1, which is used to reduce the circulations of the vortices at each frame
+            damping (float): A non-negative float between 0 and 1, which is
+                             used to reduce the circulations of the vortices
+                             at each frame
 
-            step (int): An integer representing the ratio of points in the heatmap to vectors plotted in the quiver plot
+            step (int): An integer representing the ratio of points in the
+                        heatmap to vectors plotted in the quiver plot
 
-            circulation (float): A float representing the absolute value of the circulation of all generated vortices
+            circulation (float): A float representing the absolute value of
+                                 the circulation of all generated vortices
         """
 
-        # Initial setup
-
-        ## Setting points where vorticies can be generated
         self.generation_points = generation_points
 
-        ## Setting the number of frames between vortices generated
         self.period = period
 
-        ## Setting the underlying vector field as lambda functions
-        self.dxdtf, self.dydtf = underlying_velocity[0], underlying_velocity[1]
+        self.dxdtf = underlying_velocity[0]
+        self.dydtf = underlying_velocity[1]
 
-        ## Setting the dimensions of the plot
-        self.x1, self.y1, self.x2, self.y2 = dimensions[0][0], dimensions[0][1], dimensions[1][0], dimensions[1][1]
+        self.x1 = dimensions[0][0]
+        self.y1 = dimensions[0][1]
+        self.x2 = dimensions[1][0]
+        self.y2 = dimensions[1][1]
 
-        ## Setting the damping factor
         self.damping = damping
 
-        ## Setting the ratio of heatmap points to vectors
         self.step = step
 
-        ## Setting the coordinates of the initial vortex
         self.initial_state = [generation_points[0]]
 
-        ## Setting the circulation of the initial vortex
-        if circulation == None:
+        if circulation is None:
             self.circulation = 2*self.np.pi
         else:
             self.circulation = circulation
@@ -333,62 +368,58 @@ class VortexStreet(VortexSim):
         self.initial_circulations = [-self.circulation]
 
     def new_vortex(self, i, circulation):
-        'Adds a new vortex at one of the generation point periodically'
+        """Add a new vortex at one of the generation point periodically."""
 
         self.place_vortex(self.generation_points[i % 2], circulation)
 
     def place_vortex(self, coords, circulation):
-        'Adds a new vortex at the given points'
+        """Place a new vortex at the given point."""
 
-        # Updates vortex_points
         self.vortex_points.append((coords[0], coords[1]))
-
-        # Updates circulations
         self.circulations.append(circulation)
 
     def update_data(self, num, x, y, delta, threshold):
-        'Updates plotting data for each frame'
+        """Update plotting data for each frame."""
 
         # Determine whether a new vortex is to be placed
         if (num % self.period == 0) and (num != 0):
-            self.new_vortex(num//self.period, self.circulation*(-1)**(num//self.period + 1))
+            self.new_vortex(num//self.period,
+                            self.circulation*(-1)**(num//self.period + 1))
 
         # Update circulations with damping factor
         self.circulations = [i*(1 - self.damping) for i in self.circulations]
-        
-        # Update the positions of the vortices
-        updated_vortex_points = [self.move_vortex(i, delta) for i in range(len(self.vortex_points))]
-        
-        self.vortex_points = updated_vortex_points.copy()
-        
-        # Find the velocities generated by each vortex singularly
-        velocities = [self.update_velocities(x, y, i[1][0], i[1][1], self.circulations[i[0]]) for i in enumerate(self.vortex_points)]
-        
-        # Sets the initial values of the underlying vector field
-        dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
 
-        # Sum to find the total velocities induced by all vortices
+        updated_vortex_points = [self.move_vortex(i, delta)
+                                 for i in range(len(self.vortex_points))]
+
+        self.vortex_points = updated_vortex_points.copy()
+
+        # Find the velocities generated by each vortex singularly
+        velocities = [self.update_velocities(x, y, i[1][0], i[1][1],
+                                             self.circulations[i[0]])
+                      for i in enumerate(self.vortex_points)]
+
+        # Sum all velocities
+        dxdt, dydt = self.dxdtf(x, y), self.dydtf(x, y)
         for i in velocities:
             dxdt += i[0]
             dydt += i[1]
-        
-        # Generate a scalar speed by taking the absolute value of all the velocity vectors
+
+        # Generate a scalar speed
         v = self.np.sqrt(dxdt**2 + dydt**2)
-        
+
         if threshold == 0:
-            # Return updated velocity
-            return v            
+            return v
         else:
-            # Create a lower resolution list of velocities for use in the quiver plot
+            # Create a lower resolution list of velocities for the quiver plot
             dxdtq = [i[::self.step] for i in dxdt[::self.step]]
             dydtq = [i[::self.step] for i in dydt[::self.step]]
 
             # Remove velocities above a cut-off threshold
-            if threshold != None:
+            if threshold is not None:
                 for i in range(len(dxdtq)):
                     for j in range(len(dxdtq[i])):
                         if dxdtq[i][j]**2 + dydtq[i][j]**2 > threshold**2:
                             dxdtq[i][j], dydtq[i][j] = 0, 0
 
-            # Return updated data
             return dxdtq, dydtq, v
