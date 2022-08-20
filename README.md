@@ -9,10 +9,10 @@ Some simple examples can be found below:
     <table>
 	    <tr>
     	    <td style="padding:10px">
-        	    <img src="https://user-images.githubusercontent.com/79726292/121782886-b0211d00-cba3-11eb-86d8-3a9b0802ce12.PNG" height="300"/>
+        	    <img src="https://user-images.githubusercontent.com/79726292/121782886-b0211d00-cba3-11eb-86d8-3a9b0802ce12.PNG" height="250"/>
             </td>
             <td style="padding:10px">
-            	<img src="https://user-images.githubusercontent.com/79726292/121782880-a4cdf180-cba3-11eb-9f57-bad0e21ac9ea.png" height="300"/>
+            	<img src="https://user-images.githubusercontent.com/79726292/121782880-a4cdf180-cba3-11eb-9f57-bad0e21ac9ea.png" height="250"/>
             </td>
         </tr>
     </table>
@@ -26,10 +26,10 @@ It is also possible to plot a pseudo-simulation of a Karman Vortex Street, as we
     <table>
 	    <tr>
     	    <td style="padding:10px">
-        	    <img src="https://user-images.githubusercontent.com/79726292/121782895-b911ee80-cba3-11eb-8e30-a246e0ce4c21.png" height="250"/>
+        	    <img src="https://user-images.githubusercontent.com/79726292/121782895-b911ee80-cba3-11eb-8e30-a246e0ce4c21.png" height="200"/>
             </td>
             <td style="padding:10px">
-            	<img src="https://user-images.githubusercontent.com/79726292/121782898-bca57580-cba3-11eb-9e88-5860222bfbb7.png" height="250"/>
+            	<img src="https://user-images.githubusercontent.com/79726292/121782898-bca57580-cba3-11eb-9e88-5860222bfbb7.png" height="200"/>
             </td>
         </tr>
     </table>
