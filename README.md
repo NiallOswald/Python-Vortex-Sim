@@ -26,10 +26,10 @@ It is also possible to plot a pseudo-simulation of a Karman Vortex Street, as we
     <table>
 	    <tr>
     	    <td style="padding:10px">
-        	    <img src="https://user-images.githubusercontent.com/79726292/121782895-b911ee80-cba3-11eb-8e30-a246e0ce4c21.png" height="300"/>
+        	    <img src="https://user-images.githubusercontent.com/79726292/121782895-b911ee80-cba3-11eb-8e30-a246e0ce4c21.png" height="250"/>
             </td>
             <td style="padding:10px">
-            	<img src="https://user-images.githubusercontent.com/79726292/121782898-bca57580-cba3-11eb-9e88-5860222bfbb7.png" height="300"/>
+            	<img src="https://user-images.githubusercontent.com/79726292/121782898-bca57580-cba3-11eb-9e88-5860222bfbb7.png" height="250"/>
             </td>
         </tr>
     </table>
